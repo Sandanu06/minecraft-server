@@ -15,7 +15,8 @@ services:
       MC_PROJECT: ${MC_PROJECT:-fb06ymf6y88v42zcevgm7m9m}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/docker/volumes/${MC_PROJECT:-fb06ymf6y88v42zcevgm7m9m}_minecraft-data/_data:/mc-data
+      - # Fixed path: Coolify rejects variables in volume sources. Adjust if the Minecraft app is ever recreated.
+      - /var/lib/docker/volumes/fb06ymf6y88v42zcevgm7m9m_minecraft-data/_data:/mc-data
       - /srv/minecraft-backups:/backups
       - dashboard-state:/state
 

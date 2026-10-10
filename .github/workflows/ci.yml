@@ -48,10 +48,10 @@ jobs:
       - name: Deploy Minecraft server
         if: steps.changes.outputs.minecraft == 'true'
         run: |
-          curl -fsS --retry 3 -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+          curl -fsS --retry 3 -X POST -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
             "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_MINECRAFT_UUID }}&force=false"
       - name: Deploy dashboard
         if: steps.changes.outputs.dashboard == 'true'
         run: |
-          curl -fsS --retry 3 -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+          curl -fsS --retry 3 -X POST -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
             "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_DASHBOARD_UUID }}&force=false"
