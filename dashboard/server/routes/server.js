@@ -2,14 +2,14 @@ import { config } from '../config.js';
 import { HttpError, audit, withOp, currentOp, readAudit } from '../util.js';
 import { live, history, disk, refreshNow } from '../collector.js';
 import { startMc, stopMc, restartMc, killMc, streamLogs, recentLogs } from '../docker.js';
-import { rcon, readProps, readRuntime, worldInfo } from '../mc.js';
+import { rcon, readProps, readRuntime, currentVersion } from '../mc.js';
 
 export default async function (app) {
   app.get('/api/overview', async () => {
-    const [{ props }, runtime] = await Promise.all([readProps(), readRuntime()]);
+    const [{ props }, runtime, version] = await Promise.all([readProps(), readRuntime(), currentVersion()]);
     return {
       live, op: currentOp(), disk,
-      runtime,
+      runtime: { ...runtime, version },
       server: {
         motd: props.motd, port: props['server-port'], maxPlayers: Number(props['max-players'] || 0),
         difficulty: props.difficulty, gamemode: props.gamemode, whitelist: props['white-list'] === 'true',

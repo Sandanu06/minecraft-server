@@ -79,6 +79,13 @@ export function parseMspt(out) {
 
 export async function readNamedJson(name) { return readJson(path.join(config.mcData, name), []); }
 
+/** The Minecraft version in use: the dashboard's setting, else what the container was started with. */
+export async function currentVersion() {
+  const { version } = await readRuntime();
+  if (version) return version;
+  try { return (await inspectMc()).Config?.Env?.find((e) => e.startsWith('MC_VERSION='))?.split('=')[1] || ''; } catch { return ''; }
+}
+
 export async function worldInfo() {
   const { props } = await readProps();
   const level = props['level-name'] || 'world';

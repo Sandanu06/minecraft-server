@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { config, paths } from '../config.js';
 import { HttpError, audit, run, readJson, writeJson } from '../util.js';
-import { readRuntime } from '../mc.js';
+import { currentVersion } from '../mc.js';
 
 const API = 'https://api.modrinth.com/v2';
 const LOADERS = ['paper', 'spigot', 'bukkit', 'purpur', 'folia'];
@@ -18,10 +18,7 @@ async function modrinth(p) {
   return res.json();
 }
 
-async function gameVersion() {
-  const { version } = await readRuntime();
-  return version || process.env.MC_VERSION || '';
-}
+const gameVersion = currentVersion;
 
 async function pluginMeta(file, mtime) {
   const cacheKey = `${file}:${mtime}`;
