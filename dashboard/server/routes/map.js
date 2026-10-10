@@ -37,7 +37,7 @@ export default async function (app) {
       acceptedDownload: /accept-download:\s*true/.test(core),
       webPort: Number(web.match(/^\s*port:\s*(\d+)/m)?.[1] || 8100),
       render: list.length ? await renderStatus() : null,
-      maps: (await fsp.readdir(path.join(dir(), 'maps')).catch(() => [])).filter((f) => f.endsWith('.conf')).map((f) => f.replace(/\.conf$/, '')),
+      maps: await Promise.all((await fsp.readdir(path.join(dir(), 'maps')).catch(() => [])).filter((f) => f.endsWith('.conf')).map(async (f) => (await fsp.readFile(path.join(dir(), 'maps', f), 'utf8')).match(/^name:\s*"(.+)"/m)?.[1] || f.replace(/\.conf$/, ''))),
     };
   });
 
