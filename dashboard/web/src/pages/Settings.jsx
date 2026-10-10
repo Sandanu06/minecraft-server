@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Gauge, Info, Save } from 'lucide-react';
 import { api, markRestartNeeded } from '../api.js';
 import { useApi } from '../hooks.js';
+import { useMe } from '../App.jsx';
 import { Field, PageHead, Spinner, Toggle, useToast } from '../ui.jsx';
 
 const GROUPS = [
@@ -17,6 +18,7 @@ export default function Settings() {
   const [rt, setRt] = useState(null);
   const [busy, setBusy] = useState('');
   const toast = useToast();
+  const edit = useMe().can('settings.edit');
   useEffect(() => { if (data) { setVals(data.values); setRt(data.runtime); } }, [data]);
   if (!vals) return <div className="skeleton" style={{ height: 400 }} />;
   const schema = data.schema;
@@ -44,7 +46,7 @@ export default function Settings() {
 
   return (
     <div className="stack">
-      <PageHead title="Settings" actions={<button className="btn primary" onClick={save} disabled={busy === 'save'}>{busy === 'save' ? <Spinner /> : <Save />}Save changes</button>}>
+      <PageHead title="Settings" actions={<button className="btn primary" onClick={save} disabled={busy === 'save' || !edit}>{busy === 'save' ? <Spinner /> : <Save />}Save changes</button>}>
         Game rules and performance. Most changes apply after a restart.
       </PageHead>
 
@@ -73,29 +75,7 @@ export default function Settings() {
         <div><h3>Joining without a paid account</h3><p className="muted" style={{ marginTop: 4 }}>This server accepts launchers like TLauncher (offline mode is {data.locked['online-mode'] === 'true' ? 'off' : 'on'}), so it is locked here on purpose. Anyone can pick any name, so keep the allowlist on and add a login plugin such as AuthMe from Plugins when you want passwords.</p></div>
       </section>
 
-      <Account />
     </div>
   );
 }
 
-function Account() {
-  const [f, setF] = useState({ current: '', next: '', again: '' });
-  const [busy, setBusy] = useState(false);
-  const toast = useToast();
-  const ok = f.current && f.next.length >= 10 && f.next === f.again;
-  const submit = async (e) => {
-    e.preventDefault(); setBusy(true);
-    try { await api('/account/password', { method: 'POST', body: { current: f.current, next: f.next } }); toast('Password changed. Please sign in again.'); setTimeout(() => location.reload(), 1200); }
-    catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
-  };
-  return (
-    <form className="panel" onSubmit={submit}>
-      <div className="panel-head"><h2>Admin password</h2><button className="btn small" disabled={!ok || busy}>{busy && <Spinner />}Change password</button></div>
-      <div className="panel-pad" style={{ display: 'grid', gap: 18, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-        <Field label="Current password">{(id) => <input id={id} className="input" type="password" autoComplete="current-password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} />}</Field>
-        <Field label="New password" hint="At least 10 characters.">{(id) => <input id={id} className="input" type="password" autoComplete="new-password" value={f.next} onChange={(e) => setF({ ...f, next: e.target.value })} />}</Field>
-        <Field label="Repeat new password">{(id) => <input id={id} className="input" type="password" autoComplete="new-password" value={f.again} onChange={(e) => setF({ ...f, again: e.target.value })} />}</Field>
-      </div>
-    </form>
-  );
-}

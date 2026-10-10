@@ -18,7 +18,7 @@ async function modrinth(p) {
   return res.json();
 }
 
-const gameVersion = currentVersion;
+export const gameVersion = currentVersion;
 
 async function pluginMeta(file, mtime) {
   const cacheKey = `${file}:${mtime}`;
@@ -58,7 +58,7 @@ async function download(version, targetDir) {
   return file.filename;
 }
 
-async function installProject(projectId, gv, seen = new Set()) {
+export async function installProject(projectId, gv, seen = new Set()) {
   if (seen.has(projectId)) return [];
   seen.add(projectId);
   const version = await latestVersion(projectId, gv);

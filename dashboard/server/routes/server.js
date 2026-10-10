@@ -1,7 +1,9 @@
 import { config } from '../config.js';
+import { SAFE_COMMANDS } from '../rbac.js';
 import { HttpError, audit, withOp, currentOp, readAudit } from '../util.js';
 import { live, history, disk, refreshNow } from '../collector.js';
-import { startMc, stopMc, restartMc, killMc, streamLogs, recentLogs } from '../docker.js';
+import { streamLogs, recentLogs } from '../docker.js';
+import { power } from '../power.js';
 import { rcon, readProps, readRuntime, currentVersion } from '../mc.js';
 
 export default async function (app) {
@@ -22,15 +24,7 @@ export default async function (app) {
   app.post('/api/server/:action', async (req) => {
     const { action } = req.params;
     if (!['start', 'stop', 'restart', 'kill'].includes(action)) throw new HttpError(400, 'Unknown action');
-    await withOp(`server ${action}`, async () => {
-      // Flush the world to disk before a stop or restart when we can.
-      if ((action === 'stop' || action === 'restart') && live.state === 'running') { try { await rcon('save-all flush'); } catch { /* docker stop still saves */ } }
-      if (action === 'start') await startMc();
-      if (action === 'stop') await stopMc();
-      if (action === 'restart') await restartMc();
-      if (action === 'kill') await killMc();
-    });
-    await refreshNow();
+    await power(action);
     await audit(req, `server.${action}`);
     return { ok: true };
   });
@@ -39,6 +33,11 @@ export default async function (app) {
     const command = String(req.body?.command || '').trim().replace(/^\//, '');
     if (!command || command.length > 400) throw new HttpError(400, 'Type a command');
     if (/^stop\b/i.test(command)) throw new HttpError(400, 'Use the power switch to stop the server, so it stays off.');
+    // Roles with only "safe commands" are limited to a short allowlist, one command per line.
+    if (!req.user.perms.has('console.run')) {
+      const word = command.split(/\s+/)[0].toLowerCase().replace(/^minecraft:/, '');
+      if (!SAFE_COMMANDS.has(word) || /[\r\n]/.test(command)) throw new HttpError(403, `Your role can only run safe commands, and “${word}” is not one of them.`);
+    }
     const output = await rcon(command);
     await audit(req, 'console', command.slice(0, 200));
     return { output };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Archive, Copy, Megaphone, Power, RefreshCw, UserX } from 'lucide-react';
 import { api } from '../api.js';
-import { useServer } from '../App.jsx';
+import { useMe, useServer } from '../App.jsx';
 import { useApi } from '../hooks.js';
 import { bytes, duration } from '../format.js';
 import { Confirm, PageHead, Spark, Spinner, useToast, Modal } from '../ui.jsx';
@@ -18,6 +18,7 @@ const Reading = ({ label, value, note, values, color, meter }) => (
 
 export default function Overview() {
   const { data, reload } = useServer();
+  const me = useMe();
   const hist = useApi('/history', { every: 15000 });
   const toast = useToast();
   const [busy, setBusy] = useState('');
@@ -52,7 +53,7 @@ export default function Overview() {
       <section className="panel hero">
         <div className="hero-left">
           <div className="power">
-            <button className="power-switch" data-on={on} data-busy={transitioning} disabled={transitioning || !!busy}
+            <button className="power-switch" data-on={on} data-busy={transitioning} disabled={transitioning || !!busy || !me.can('server.power')} title={me.can('server.power') ? '' : 'Your role cannot start or stop the server'}
               aria-label={on ? 'Stop the server' : 'Start the server'}
               onClick={() => (on ? setConfirm('stop') : act('start', 'Server is starting'))}>
               <span className="thumb">{busy === 'start' || transitioning ? <Spinner size={22} /> : <Power />}</span>
@@ -69,9 +70,9 @@ export default function Overview() {
           </div>
           <div className="address"><code>{address}</code><button className="btn ghost small" onClick={copy}><Copy />Copy</button></div>
           <div className="actions">
-            <button className="btn" disabled={live.state !== 'running' || !!op} onClick={() => setConfirm('restart')}><RefreshCw />Restart</button>
-            <button className="btn" disabled={live.state !== 'running'} onClick={() => setBroadcast('')}><Megaphone />Broadcast</button>
-            <Link className="btn" to="/backups"><Archive />Back up</Link>
+            <button className="btn" disabled={live.state !== 'running' || !!op || !me.can('server.power')} onClick={() => setConfirm('restart')}><RefreshCw />Restart</button>
+            {me.can('players.broadcast') && <button className="btn" disabled={live.state !== 'running'} onClick={() => setBroadcast('')}><Megaphone />Broadcast</button>}
+            {me.can('backups.view') && <Link className="btn" to="/backups"><Archive />Back up</Link>}
           </div>
         </div>
         <div className="hero-right">
@@ -125,7 +126,7 @@ function OnlinePlayers() {
           <div className="item" key={n}>
             <img className="avatar head-skin" alt="" width="36" height="36" src={`https://mc-heads.net/avatar/${n}/72`} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
             <div className="grow"><div className="title">{n}</div></div>
-            <button className="btn ghost small danger" onClick={() => kick(n)}><UserX />Kick</button>
+            {me.can('players.moderate') && <button className="btn ghost small danger" onClick={() => kick(n)}><UserX />Kick</button>}
           </div>))}
         </div>
       )}
@@ -134,13 +135,14 @@ function OnlinePlayers() {
 }
 
 function RecentLog() {
-  const { data } = useApi('/logs?tail=14', { every: 6000 });
+  const me = useMe();
+  const { data } = useApi('/logs?tail=14', { every: 6000, enabled: me.can('console.view') });
   const lines = (data?.text || '').split('\n').filter(Boolean).slice(-10);
   return (
     <section className="panel">
-      <div className="panel-head"><h2>Latest from the console</h2><Link className="btn ghost small" to="/console">Open console</Link></div>
+      <div className="panel-head"><h2>Latest from the console</h2>{me.can('console.view') && <Link className="btn ghost small" to="/console">Open console</Link>}</div>
       <div className="term-out" style={{ background: 'var(--term)', color: '#d6d8de', borderRadius: '0 0 16px 16px', maxHeight: 290, minHeight: 120, fontSize: 12.5 }}>
-        {lines.length ? lines.map((l, i) => <div key={i} className={/WARN/.test(l) ? 'warn' : /ERROR|Exception/.test(l) ? 'err' : ''}>{l.replace(/^\[\d\d:\d\d:\d\d\] /, '')}</div>) : <div className="faint">No output yet.</div>}
+        {!me.can('console.view') ? <div className="faint">Your role cannot read the console.</div> : lines.length ? lines.map((l, i) => <div key={i} className={/WARN/.test(l) ? 'warn' : /ERROR|Exception/.test(l) ? 'err' : ''}>{l.replace(/^\[\d\d:\d\d:\d\d\] /, '')}</div>) : <div className="faint">No output yet.</div>}
       </div>
     </section>
   );

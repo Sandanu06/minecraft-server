@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FileCode2, Save } from 'lucide-react';
 import { api, markRestartNeeded } from '../api.js';
 import { useApi } from '../hooks.js';
+import { useMe } from '../App.jsx';
 import { PageHead, Spinner, useToast } from '../ui.jsx';
 
 export default function Files() {
@@ -11,6 +12,7 @@ export default function Files() {
   const [orig, setOrig] = useState('');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const edit = useMe().can('files.edit');
 
   useEffect(() => {
     if (!file) return;
@@ -27,7 +29,7 @@ export default function Files() {
 
   return (
     <div className="stack">
-      <PageHead title="Config files" actions={<button className="btn primary" onClick={save} disabled={busy || text === orig || !file}>{busy ? <Spinner /> : <Save />}Save file</button>}>
+      <PageHead title="Config files" actions={<button className="btn primary" onClick={save} disabled={busy || text === orig || !file || !edit}>{busy ? <Spinner /> : <Save />}Save file</button>}>
         Edit any server or plugin configuration directly. Most files are read at start-up, so restart after saving.
       </PageHead>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 280px) minmax(0, 1fr)', gap: 20 }} className="files-grid">
@@ -38,7 +40,7 @@ export default function Files() {
         </section>
         <section className="stack-sm">
           <div className="mono muted">{file}{text !== orig && <span className="pill warn" style={{ marginLeft: 10 }}>Unsaved</span>}</div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={26} spellCheck="false" aria-label="File contents" style={{ minHeight: '60vh' }} />
+          <textarea value={text} readOnly={!edit} onChange={(e) => setText(e.target.value)} rows={26} spellCheck="false" aria-label="File contents" style={{ minHeight: '60vh' }} />
         </section>
       </div>
     </div>

@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, data) { super(message); this.status = status; this.data = data; }
 }
 
 let onUnauthorized = () => {};
@@ -15,7 +15,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
   if (!res.ok) {
     if (res.status === 401 && path !== '/login') onUnauthorized();
-    throw new ApiError(res.status, data?.error || `Request failed (${res.status})`);
+    throw new ApiError(res.status, data?.error || `Request failed (${res.status})`, data);
   }
   return data;
 }

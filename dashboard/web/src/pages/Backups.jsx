@@ -4,13 +4,14 @@ import { api } from '../api.js';
 import { useApi } from '../hooks.js';
 import { ago, bytes, dateTime } from '../format.js';
 import { Confirm, Empty, PageHead, Spinner, Toggle, useToast } from '../ui.jsx';
-import { useServer } from '../App.jsx';
+import { useMe, useServer } from '../App.jsx';
 
 const KIND = { auto: ['Daily', 'ok'], manual: ['Manual', ''], safety: ['Safety', 'brand'] };
 
 export default function Backups() {
   const { data, reload } = useApi('/backups', { every: 15000 });
   const server = useServer();
+  const me = useMe();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [restore, setRestore] = useState(null);
@@ -27,7 +28,7 @@ export default function Backups() {
 
   return (
     <div className="stack">
-      <PageHead title="Backups" actions={<button className="btn primary" onClick={create} disabled={busy || !!op}>{busy || op?.type === 'backup' ? <Spinner /> : <Archive />}Back up now</button>}>
+      <PageHead title="Backups" actions={<button className="btn primary" onClick={create} disabled={busy || !!op || !me.can('backups.create')}>{busy || op?.type === 'backup' ? <Spinner /> : <Archive />}Back up now</button>}>
         Everything your friends built is saved here. A backup takes a minute and the game keeps running.
       </PageHead>
       {op && <div className="panel panel-pad row"><Spinner /><b>{op.type}</b><span className="muted">{op.message || 'Working…'}</span></div>}
@@ -36,12 +37,12 @@ export default function Backups() {
         <div className="row"><ShieldCheck color="var(--ok)" /><div><h3>Daily backup</h3><div className="muted">Runs automatically; the newest {s?.keep ?? 7} daily copies are kept.</div></div></div>
         {s && <div className="row wrap">
           <label className="row" style={{ gap: 8 }}><span className="muted">At</span>
-            <select style={{ width: 120 }} value={s.hourUtc} onChange={(e) => saveSchedule({ hourUtc: Number(e.target.value) })} aria-label="Hour (UTC)">
+            <select style={{ width: 120 }} disabled={!me.can('backups.schedule')} value={s.hourUtc} onChange={(e) => saveSchedule({ hourUtc: Number(e.target.value) })} aria-label="Hour (UTC)">
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00 UTC</option>)}</select></label>
           <label className="row" style={{ gap: 8 }}><span className="muted">Keep</span>
-            <select style={{ width: 90 }} value={s.keep} onChange={(e) => saveSchedule({ keep: Number(e.target.value) })} aria-label="Copies to keep">
+            <select style={{ width: 90 }} disabled={!me.can('backups.schedule')} value={s.keep} onChange={(e) => saveSchedule({ keep: Number(e.target.value) })} aria-label="Copies to keep">
               {[3, 7, 14, 30].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-          <Toggle checked={s.enabled} label="Daily backup" onChange={(v) => saveSchedule({ enabled: v })} />
+          <Toggle checked={s.enabled} disabled={!me.can('backups.schedule')} label="Daily backup" onChange={(v) => saveSchedule({ enabled: v })} />
         </div>}
       </section>
 
@@ -54,9 +55,9 @@ export default function Backups() {
               <div className="item" key={b.name}>
                 <div className="grow"><div className="title">{dateTime(b.created)}<span className={`pill ${tone}`}>{label}</span></div><div className="sub mono">{b.name} · {bytes(b.size)} · {ago(b.created)}</div></div>
                 <div className="actions">
-                  <a className="btn small" href={`/api/backups/${b.name}/download`}><Download />Download</a>
-                  <button className="btn small" disabled={!!op} onClick={() => setRestore(b)}><RotateCcw />Restore</button>
-                  <button className="btn small ghost danger" aria-label="Delete backup" onClick={() => setDel(b)}><Trash2 /></button>
+                  {me.can('backups.download') && <a className="btn small" href={`/api/backups/${b.name}/download`}><Download />Download</a>}
+                  {me.can('backups.restore') && <button className="btn small" disabled={!!op} onClick={() => setRestore(b)}><RotateCcw />Restore</button>}
+                  {me.can('backups.delete') && <button className="btn small ghost danger" aria-label="Delete backup" onClick={() => setDel(b)}><Trash2 /></button>}
                 </div>
               </div>); })}</div>)}
       </section>

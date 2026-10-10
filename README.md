@@ -17,7 +17,7 @@ A **Paper** Minecraft server with its own admin dashboard, deployed on Coolify.
 
 ## The dashboard
 
-Power switch (start, stop, restart), live console and logs, monitoring (TPS, tick time, CPU, memory, players), player management (allowlist, operators, kick, ban), plugin browser with one-click Modrinth install, worlds, Paper version switching, backups with one-click restore, a settings editor, a config-file editor and an activity log.
+Power switch (start, stop, restart), live console and chat, monitoring (TPS, tick time, CPU, memory, players), player management (allowlist, operators, kick, ban, per-player controls), **user accounts with roles and per-permission access control and optional 2FA**, **scripts and schedules** (with per-role run permissions), **in-game permissions via LuckPerms**, Discord alerts, a plugin browser with one-click Modrinth install, worlds with live game controls, Paper version switching and build updates, backups with one-click restore, a settings editor, a config-file editor and an activity log. See [docs/DASHBOARD.md](docs/DASHBOARD.md).
 
 Safety built in:
 - Every version switch and restore takes a backup first.

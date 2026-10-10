@@ -6,9 +6,10 @@ import { config } from '../config.js';
 import { HttpError, audit, withOp, exists } from '../util.js';
 import { readProps, writeProps, readRuntime, writeRuntime, parseNbt, worldInfo } from '../mc.js';
 import { createBackup } from '../backups.js';
+import crypto from 'node:crypto';
+import { pipeline } from 'node:stream/promises';
 import { restartMc, startMc, inspectMc } from '../docker.js';
 import { live, refreshNow } from '../collector.js';
-import { changePassword } from '../auth.js';
 
 /* Editable server.properties keys with their validation. Port, RCON and online-mode stay locked on purpose. */
 const SCHEMA = {
@@ -66,6 +67,23 @@ async function paperVersions() {
   return list;
 }
 
+/* Paper builds: the entrypoint boots the newest jar for the chosen version, so updating = downloading a newer jar. */
+const jarDir = () => path.join(config.mcData, 'paper');
+async function installedBuild(version) {
+  const files = (await fsp.readdir(jarDir()).catch(() => [])).map((f) => f.match(new RegExp(`^paper-${version.replace(/\./g, '\\.')}-(\\d+)\\.jar$`))).filter(Boolean);
+  return files.length ? Math.max(...files.map((m) => Number(m[1]))) : null;
+}
+let latestCache = { at: 0, version: '', data: null };
+async function latestBuild(version) {
+  if (latestCache.version === version && Date.now() - latestCache.at < 10 * 60 * 1000) return latestCache.data;
+  const res = await fetch(`https://fill.papermc.io/v3/projects/paper/versions/${version}/builds/latest`, { headers: { 'User-Agent': config.modrinthUA }, signal: AbortSignal.timeout(15000) });
+  if (!res.ok) return null;
+  const j = await res.json(), d = j.downloads?.['server:default'];
+  const data = d ? { id: j.id, channel: j.channel, name: d.name, url: d.url, sha256: d.checksums?.sha256 } : null;
+  latestCache = { at: Date.now(), version, data };
+  return data;
+}
+
 async function worldVersion() {
   try {
     const { dir } = await worldInfo();
@@ -119,7 +137,11 @@ export default async function (app) {
   app.get('/api/versions', async () => {
     const [list, runtime, world, info] = await Promise.all([paperVersions(), readRuntime(), worldVersion(), inspectMc().catch(() => null)]);
     const envVersion = info?.Config?.Env?.find((e) => e.startsWith('MC_VERSION='))?.split('=')[1] || '';
+    const version = runtime.version || envVersion;
+    const [build, latest] = version ? await Promise.all([installedBuild(version), latestBuild(version).catch(() => null)]) : [null, null];
     return {
+      build, latestBuild: latest ? { id: latest.id, channel: latest.channel } : null,
+      buildUpdateAvailable: !!(build && latest && latest.id > build),
       software: info?.Config?.Image?.includes('paper') || runtime.version ? 'Paper' : 'Vanilla',
       current: runtime.version || envVersion, world,
       versions: list.map((v) => ({ id: v, preview: /rc|pre/i.test(v) })),
@@ -143,6 +165,36 @@ export default async function (app) {
     });
     await audit(req, 'version.switch', target);
     return { ok: true };
+  });
+
+  app.post('/api/versions/update-build', async (req) => {
+    const version = (await readRuntime()).version;
+    if (!version) throw new HttpError(409, 'The server has not recorded its version yet');
+    const latest = await latestBuild(version);
+    const have = await installedBuild(version);
+    if (!latest) throw new HttpError(502, 'Could not reach the PaperMC download service');
+    if (have && latest.id <= have) throw new HttpError(409, 'Paper is already on the newest build');
+    await withOp('paper update', async (progress) => {
+      progress('Backing up before the update');
+      await createBackup(`pre-paper-build-${latest.id}`, progress);
+      progress(`Downloading build ${latest.id}`);
+      await fsp.mkdir(jarDir(), { recursive: true });
+      const tmp = path.join(jarDir(), `${latest.name}.part`);
+      const res = await fetch(latest.url, { headers: { 'User-Agent': config.modrinthUA }, signal: AbortSignal.timeout(180000) });
+      if (!res.ok) throw new HttpError(502, 'Download failed');
+      await pipeline(res.body, fs.createWriteStream(tmp));
+      const sum = crypto.createHash('sha256').update(await fsp.readFile(tmp)).digest('hex');
+      if (latest.sha256 && sum !== latest.sha256) { await fsp.rm(tmp, { force: true }); throw new HttpError(502, 'Checksum mismatch, download discarded'); }
+      await fsp.rename(tmp, path.join(jarDir(), latest.name));
+      const jars = (await fsp.readdir(jarDir())).filter((f) => /^paper-.*\.jar$/.test(f));
+      const stats = await Promise.all(jars.map(async (f) => ({ f, t: (await fsp.stat(path.join(jarDir(), f))).mtimeMs })));
+      for (const old of stats.sort((a, b) => b.t - a.t).slice(2)) await fsp.rm(path.join(jarDir(), old.f), { force: true });
+      progress('Restarting');
+      if (live.state === 'stopped') await startMc(); else await restartMc();
+      await refreshNow();
+    });
+    await audit(req, 'version.update-build', `${version} build ${latest.id}`);
+    return { ok: true, build: latest.id };
   });
 
   /* ---- raw files ---- */
@@ -169,9 +221,4 @@ export default async function (app) {
     return { ok: true, restartNeeded: true };
   });
 
-  app.post('/api/account/password', async (req) => {
-    await changePassword(req.user, req.body?.current, req.body?.next);
-    await audit(req, 'account.password');
-    return { ok: true };
-  });
 }

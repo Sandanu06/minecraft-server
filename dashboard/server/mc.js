@@ -2,7 +2,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { config, paths } from './config.js';
 import { HttpError, readJson, writeFileAtomic, stripColors } from './util.js';
-import { rconExec } from './rcon.js';
+import { rconRun } from './rcon.js';
 import { ensureNetwork, inspectMc } from './docker.js';
 
 /* ---------- server.properties ---------- */
@@ -44,7 +44,7 @@ export async function writeRuntime(patch) {
 }
 
 /* ---------- RCON ---------- */
-export async function rcon(command) {
+async function rconWith(commands) {
   const { props } = await readProps();
   if (props['enable-rcon'] !== 'true' || !props['rcon.password']) {
     throw new HttpError(409, 'Remote console is not enabled on this server yet. It turns on after the Paper upgrade.');
@@ -54,11 +54,14 @@ export async function rcon(command) {
   const call = async () => {
     const host = await ensureNetwork();
     if (!host) throw new HttpError(503, 'Cannot find the server on the network');
-    return rconExec({ host, port: Number(props['rcon.port'] || 25575), password: props['rcon.password'], command });
+    return rconRun({ host, port: Number(props['rcon.port'] || 25575), password: props['rcon.password'], commands });
   };
   try { return await call(); }
   catch (e) { if (e.status === 503) { await new Promise((r) => setTimeout(r, 400)); return call(); } throw e; }
 }
+export const rcon = async (command) => (await rconWith([command]))[0];
+/** Several commands over one connection; returns the outputs in order. */
+export const rconMany = (commands) => rconWith(commands);
 
 /* ---------- parsed status readings ---------- */
 export function parseList(out) {

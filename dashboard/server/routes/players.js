@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { HttpError, audit, assertName } from '../util.js';
 import { rcon, parseList, readNamedJson, readProps, worldInfo, writeProps } from '../mc.js';
 import { live } from '../collector.js';
+import { sessionStore, chat } from '../follower.js';
 
 async function playtime(uuid, worldDir) {
   for (const p of [`players/stats/${uuid}.json`, `stats/${uuid}.json`]) {
@@ -27,10 +28,12 @@ export default async function (app) {
     const opSet = new Set(ops.map((o) => o.name.toLowerCase()));
     const wlSet = new Set(whitelist.map((o) => o.name.toLowerCase()));
     const banSet = new Set(bans.map((o) => o.name.toLowerCase()));
+    const sessions = (await sessionStore.read()).players;
     const known = await Promise.all(cache.map(async (p) => ({
       name: p.name, uuid: p.uuid, expiresOn: p.expiresOn,
       op: opSet.has(p.name.toLowerCase()), whitelisted: wlSet.has(p.name.toLowerCase()), banned: banSet.has(p.name.toLowerCase()),
-      online: online.names.includes(p.name), playSeconds: await playtime(p.uuid, world.dir),
+      online: online.names.includes(p.name), playSeconds: (await playtime(p.uuid, world.dir)) ?? (sessions[p.name]?.totalSeconds ?? null),
+      lastSeen: sessions[p.name]?.lastSeen ?? null, joins: sessions[p.name]?.sessions ?? 0,
     })));
     return {
       online, known, ops, whitelist, bans, ipBans,
@@ -61,6 +64,8 @@ export default async function (app) {
     await audit(req, 'whitelist.enabled', String(on));
     return { ok: true };
   });
+
+  app.get('/api/chat', async () => ({ chat }));
 
   app.post('/api/broadcast', async (req) => {
     const message = String(req.body?.message || '').replace(/[\r\n]/g, ' ').slice(0, 200).trim();

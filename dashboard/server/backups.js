@@ -6,6 +6,7 @@ import { HttpError, run, readJson, writeJson, audit, withOp } from './util.js';
 import { rcon } from './mc.js';
 import { live } from './collector.js';
 import { startMc, stopMc } from './docker.js';
+import { emit } from './events.js';
 
 export const NAME_OK = /^[\w.\-]+\.tgz$/;
 // Regenerable or noisy data that never needs to be backed up.
@@ -30,6 +31,11 @@ export async function listBackups() {
 }
 
 export async function createBackup(label = 'manual', progress = () => {}) {
+  try { const r = await makeBackup(label, progress); emit('backup', r); return r; }
+  catch (e) { emit('backupFailed', { error: e.message }); throw e; }
+}
+
+async function makeBackup(label, progress) {
   await fsp.mkdir(config.backupDir, { recursive: true });
   const name = `minecraft-${stamp()}-${label}.tgz`.replace(/[^\w.\-]/g, '');
   const final = path.join(config.backupDir, name), tmp = `${final}.part`;

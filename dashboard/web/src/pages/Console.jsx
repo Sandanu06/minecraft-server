@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDownToLine, Pause, Play } from 'lucide-react';
 import { api } from '../api.js';
+import { useMe } from '../App.jsx';
 import { PageHead, useToast } from '../ui.jsx';
 
 const QUICK = ['list', 'tps', 'save-all', 'whitelist list', 'difficulty', 'time set day', 'weather clear'];
@@ -10,6 +11,9 @@ export default function Console() {
   const [lines, setLines] = useState([]);
   const [filter, setFilter] = useState('');
   const [follow, setFollow] = useState(true);
+  const [chatOnly, setChatOnly] = useState(false);
+  const me = useMe();
+  const canRun = me.can('console.run') || me.can('console.safe');
   const [paused, setPaused] = useState(false);
   const [cmd, setCmd] = useState('');
   const [history, setHistory] = useState([]);
@@ -29,7 +33,8 @@ export default function Console() {
     return () => es.close();
   }, []);
 
-  const shown = filter ? lines.filter((l) => l.toLowerCase().includes(filter.toLowerCase())) : lines;
+  const base = chatOnly ? lines.filter((l) => /: <\w{3,16}> /.test(l) || /(joined|left) the game/.test(l)) : lines;
+  const shown = filter ? base.filter((l) => l.toLowerCase().includes(filter.toLowerCase())) : base;
   useEffect(() => { if (follow && out.current) out.current.scrollTop = out.current.scrollHeight; }, [shown.length, follow]);
 
   const send = async (text) => {
@@ -53,6 +58,7 @@ export default function Console() {
           <span className={`pill ${conn === 'live' ? 'ok' : 'warn'}`} style={{ background: 'transparent' }}><i className={`dot ${conn === 'live' ? 'live' : ''}`} />{conn === 'live' ? 'Live' : conn}</span>
           <input className="input" placeholder="Filter output" aria-label="Filter output" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <span style={{ flex: 1 }} />
+          <button className="btn small ghost" style={{ color: chatOnly ? 'var(--brand)' : '#d6d8de' }} onClick={() => setChatOnly((c) => !c)}>Chat only</button>
           <button className="btn small ghost" style={{ color: '#d6d8de' }} onClick={() => setPaused((p) => !p)}>{paused ? <Play /> : <Pause />}{paused ? 'Resume' : 'Pause'}</button>
           <button className="btn small ghost" style={{ color: follow ? 'var(--brand)' : '#d6d8de' }} onClick={() => setFollow((f) => !f)}><ArrowDownToLine />Follow</button>
         </div>
@@ -60,13 +66,13 @@ export default function Console() {
           {shown.map((l, i) => <div key={i} className={cls(l)}>{l}</div>)}
           {!shown.length && <div style={{ color: '#6c7280' }}>Waiting for output…</div>}
         </div>
-        <form className="term-in" onSubmit={(e) => { e.preventDefault(); send(); }}>
+        {canRun ? <form className="term-in" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <span>›</span>
           <input value={cmd} onChange={(e) => setCmd(e.target.value)} onKeyDown={onKey} placeholder="Type a command, for example list" aria-label="Command" autoComplete="off" spellCheck="false" />
           <button className="btn primary small" disabled={!cmd.trim()}>Run</button>
-        </form>
+        </form> : <div className="term-in"><span className="faint" style={{ color: '#6c7280' }}>Your role can read the console but not run commands.</span></div>}
       </div>
-      <div className="chips">{QUICK.map((q) => <button key={q} className="chip" onClick={() => send(q)}>{q}</button>)}</div>
+      {canRun && <div className="chips">{QUICK.map((q) => <button key={q} className="chip" onClick={() => send(q)}>{q}</button>)}</div>}
     </div>
   );
 }

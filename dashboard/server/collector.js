@@ -3,6 +3,9 @@ import { readJson, writeJson, dirSize, diskFree } from './util.js';
 import { config } from './config.js';
 import { findMc, inspectMc, statsMc } from './docker.js';
 import { rcon, parseList, parseTps, parseMspt, readProps } from './mc.js';
+import { emit } from './events.js';
+import { audit } from './util.js';
+import { reconcile } from './follower.js';
 
 const SHORT = 720;   // 1 hour at 5s
 const LONG = 1440;   // 24 hours at 1min
@@ -10,7 +13,9 @@ export const history = { short: [], long: [] };
 export const live = { state: 'unknown', health: null, startedAt: null, restarts: 0, players: { online: 0, max: 0, names: [] }, tps: null, mspt: null, cpu: 0, cpuCores: 1, memUsed: 0, memLimit: 0, image: '', updatedAt: 0 };
 export const disk = { world: 0, data: { total: 0, free: 0 }, backups: { total: 0, free: 0 } };
 
-let tick = 0, longAcc = [];
+let tick = 0, longAcc = [], prevState = null, expectedStopAt = 0, lowTpsReadings = 0;
+/** Called when the dashboard itself stops or restarts the server, so it is not reported as a crash. */
+export const markExpectedStop = () => { expectedStopAt = Date.now(); };
 
 async function poll() {
   tick++;
@@ -19,6 +24,12 @@ async function poll() {
     if (!c) { live.state = 'missing'; return; }
     const info = await inspectMc();
     live.state = info.State.Running ? (info.State.Health?.Status === 'starting' ? 'starting' : 'running') : 'stopped';
+    if (prevState === 'running' && live.state === 'stopped') {
+      const expected = Date.now() - expectedStopAt < 180000;
+      emit(expected ? 'stop' : 'crash', { exitCode: info.State.ExitCode });
+      if (!expected) audit(null, 'server.stopped-unexpectedly', `exit code ${info.State.ExitCode}`);
+    }
+    if (live.state !== 'unknown') prevState = live.state;
     live.health = info.State.Health?.Status || null;
     live.startedAt = info.State.Running ? info.State.StartedAt : null;
     live.restarts = info.RestartCount || 0;
@@ -31,7 +42,10 @@ async function poll() {
         try {
           const [list, tps, mspt] = await Promise.all([rcon('list'), rcon('tps').catch(() => ''), rcon('mspt').catch(() => '')]);
           live.players = parseList(list);
+          reconcile(live.players.names).catch(() => {});
           live.tps = parseTps(tps);
+          lowTpsReadings = live.tps != null && live.tps < 15 ? lowTpsReadings + 1 : 0;
+          if (lowTpsReadings === 3) emit('lag', { tps: live.tps });
           live.mspt = parseMspt(mspt);
         } catch { /* RCON may be off or the server still booting */ }
       }
@@ -56,6 +70,7 @@ async function pollDisk() {
     disk.world = await dirSize(`${config.mcData}/${props['level-name'] || 'world'}`);
     disk.data = await diskFree(config.mcData);
     disk.backups = await diskFree(config.backupDir);
+    if (disk.data.total && disk.data.free / disk.data.total < 0.1) emit('disk', { freePercent: Math.round((disk.data.free / disk.data.total) * 100) });
   } catch { /* ignore */ }
 }
 

@@ -22,7 +22,8 @@ export async function writeFileAtomic(file, data, mode) {
 export const writeJson = (file, obj, mode) => writeFileAtomic(file, JSON.stringify(obj, null, 2), mode);
 
 export async function audit(req, action, detail = '') {
-  const line = JSON.stringify({ t: new Date().toISOString(), user: req?.user || 'system', ip: req?.ip || '', action, detail }) + '\n';
+  const who = typeof req?.user === 'string' ? req.user : req?.user?.username;
+  const line = JSON.stringify({ t: new Date().toISOString(), user: who || 'system', ip: req?.ip || '', action, detail }) + '\n';
   try {
     await fsp.mkdir(config.stateDir, { recursive: true });
     await fsp.appendFile(paths.state('audit.jsonl'), line);

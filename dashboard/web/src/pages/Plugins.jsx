@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUpCircle, Download, Package, Search, Trash2, Upload } from 'lucide-react';
 import { api, markRestartNeeded } from '../api.js';
 import { useApi } from '../hooks.js';
+import { useMe } from '../App.jsx';
 import { bytes, compact } from '../format.js';
 import { Confirm, Empty, PageHead, Spinner, Tabs, Toggle, useToast } from '../ui.jsx';
 
 export default function Plugins() {
   const [tab, setTab] = useState('installed');
+  const manage = useMe().can('plugins.manage');
   const installed = useApi('/plugins');
   const updates = useApi('/plugins/updates');
   const toast = useToast();
@@ -28,10 +30,10 @@ export default function Plugins() {
     <div className="stack">
       <PageHead title="Plugins" actions={<>
         <input ref={fileRef} type="file" accept=".jar" hidden onChange={(e) => upload(e.target.files[0])} />
-        <button className="btn" onClick={() => fileRef.current.click()} disabled={uploading}>{uploading ? <Spinner /> : <Upload />}Upload .jar</button></>}>
+        {manage && <button className="btn" onClick={() => fileRef.current.click()} disabled={uploading}>{uploading ? <Spinner /> : <Upload />}Upload .jar</button>}</>}>
         Plugins add features to Paper without changing how the game plays for everyone. Changes apply after a restart.
       </PageHead>
-      <Tabs value={tab} onChange={setTab} items={[['installed', `Installed${installed.data ? ` (${installed.data.plugins.length})` : ''}`], ['browse', 'Browse Modrinth']]} />
+      <Tabs value={tab} onChange={setTab} items={[['installed', `Installed${installed.data ? ` (${installed.data.plugins.length})` : ''}`], ...(manage ? [['browse', 'Browse Modrinth']] : [])]} />
 
       {tab === 'installed' && (
         <section className="panel">
@@ -46,9 +48,9 @@ export default function Plugins() {
                   {p.source && upd[p.source.id] && <span className="pill brand">Update to {upd[p.source.id].latest}</span>}</div>
                 <div className="sub">{p.description || p.file} · {bytes(p.size)}</div>
               </div>
-              {p.source && upd[p.source.id] && <button className="btn small primary" onClick={() => update(p.source.id)}><ArrowUpCircle />Update</button>}
-              <Toggle checked={p.enabled} label={`${p.enabled ? 'Disable' : 'Enable'} ${p.name}`} onChange={() => toggle(p.file)} />
-              <button className="btn ghost icon danger" aria-label={`Remove ${p.name}`} onClick={() => setRemove(p)}><Trash2 size={17} /></button>
+              {manage && p.source && upd[p.source.id] && <button className="btn small primary" onClick={() => update(p.source.id)}><ArrowUpCircle />Update</button>}
+              <Toggle checked={p.enabled} disabled={!manage} label={`${p.enabled ? 'Disable' : 'Enable'} ${p.name}`} onChange={() => toggle(p.file)} />
+              {manage && <button className="btn ghost icon danger" aria-label={`Remove ${p.name}`} onClick={() => setRemove(p)}><Trash2 size={17} /></button>}
             </div>))}</div>}
         </section>
       )}
