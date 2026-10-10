@@ -1,0 +1,57 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main, dashboard]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check entrypoint script
+        run: bash -n entrypoint.sh && shellcheck -S warning entrypoint.sh
+      - name: Check dashboard server syntax
+        run: |
+          cd dashboard/server
+          npm ci --no-audit --no-fund
+          for f in *.js routes/*.js; do node --check "$f"; done
+      - name: Build Minecraft image
+        run: docker build -t minecraft-server:ci .
+      - name: Build dashboard image
+        run: docker build -t minecraft-dashboard:ci dashboard
+      - name: Smoke test (Paper reaches "Done")
+        run: |
+          docker run -d --name mc -e MAX_MEMORY=1G -e INIT_MEMORY=512M minecraft-server:ci
+          for i in $(seq 1 90); do
+            if docker logs mc 2>&1 | grep -q 'Done ('; then echo "Server started"; docker logs mc | tail -5; exit 0; fi
+            sleep 3
+          done
+          docker logs mc; exit 1
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - name: Work out what changed
+        id: changes
+        run: |
+          changed=$(git diff --name-only HEAD~1 HEAD || true)
+          echo "$changed" | grep -qE '^(Dockerfile|entrypoint\.sh|docker-compose\.yml)$' && echo "minecraft=true" >> "$GITHUB_OUTPUT" || echo "minecraft=false" >> "$GITHUB_OUTPUT"
+          echo "$changed" | grep -q '^dashboard/' && echo "dashboard=true" >> "$GITHUB_OUTPUT" || echo "dashboard=false" >> "$GITHUB_OUTPUT"
+      # Only changes to the game image restart the game. Dashboard-only pushes leave players connected.
+      - name: Deploy Minecraft server
+        if: steps.changes.outputs.minecraft == 'true'
+        run: |
+          curl -fsS --retry 3 -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_MINECRAFT_UUID }}&force=false"
+      - name: Deploy dashboard
+        if: steps.changes.outputs.dashboard == 'true'
+        run: |
+          curl -fsS --retry 3 -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_DASHBOARD_UUID }}&force=false"

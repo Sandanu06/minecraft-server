@@ -1,30 +1,19 @@
-# Coolify: deploy with the "Docker Compose" build pack. Every ${VAR} below
-# shows up as an editable environment variable in the Coolify UI.
+# Coolify: deploy with the "Docker Compose" build pack.
+# Day-to-day settings live in the dashboard; these variables only seed the very first boot.
 services:
   minecraft:
     build:
       context: .
-      args:
-        MC_VERSION: ${MC_VERSION:-26.2}
     ports:
       - "25565:25565"
     environment:
       MC_VERSION: ${MC_VERSION:-26.2}
       EULA: ${EULA:-true}
+      # TLauncher players need offline mode. Do not turn this on unless every player has a paid account.
       ONLINE_MODE: ${ONLINE_MODE:-false}
       ENFORCE_SECURE_PROFILE: ${ENFORCE_SECURE_PROFILE:-false}
       OPS: ${OPS:-IGhost_RiderI}
-      WHITELIST: ${WHITELIST:-}
-      MOTD: ${MOTD:-SandMan Minecraft Server}
-      DIFFICULTY: ${DIFFICULTY:-normal}
-      GAMEMODE: ${GAMEMODE:-survival}
-      MAX_PLAYERS: ${MAX_PLAYERS:-10}
-      VIEW_DISTANCE: ${VIEW_DISTANCE:-10}
-      SIMULATION_DISTANCE: ${SIMULATION_DISTANCE:-10}
-      PVP: ${PVP:-true}
-      SPAWN_PROTECTION: ${SPAWN_PROTECTION:-0}
-      SEED: ${SEED:-}
-      INIT_MEMORY: ${INIT_MEMORY:-512M}
+      INIT_MEMORY: ${INIT_MEMORY:-1G}
       MAX_MEMORY: ${MAX_MEMORY:-2G}
     volumes:
       - minecraft-data:/data

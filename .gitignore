@@ -1,3 +1,7 @@
 data/
 *.log
 .env
+node_modules/
+dist/
+*.tgz
+*.part
