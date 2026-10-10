@@ -38,10 +38,15 @@ async function pluginMeta(file, mtime) {
 const metaCache = new Map();
 
 async function latestVersion(projectId, gv) {
-  const q = new URLSearchParams({ loaders: JSON.stringify(LOADERS) });
-  if (gv) q.set('game_versions', JSON.stringify([gv]));
-  const versions = await modrinth(`/project/${projectId}/version?${q}`);
-  return versions.find((v) => v.version_type === 'release') || versions[0] || null;
+  const pick = (versions) => versions.find((v) => v.version_type === 'release') || versions[0] || null;
+  // Prefer a build made for Paper itself; fall back to the generic Spigot/Bukkit builds.
+  for (const loaders of [['paper'], LOADERS]) {
+    const q = new URLSearchParams({ loaders: JSON.stringify(loaders) });
+    if (gv) q.set('game_versions', JSON.stringify([gv]));
+    const hit = pick(await modrinth(`/project/${projectId}/version?${q}`));
+    if (hit) return hit;
+  }
+  return null;
 }
 
 async function download(version, targetDir) {
