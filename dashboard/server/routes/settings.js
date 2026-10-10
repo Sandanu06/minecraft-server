@@ -121,7 +121,7 @@ export default async function (app) {
     const patch = {};
     for (const [k, v] of Object.entries({ initMemory, maxMemory })) {
       if (v === undefined) continue;
-      if (!/^\d{2,5}[MG]$/.test(v)) throw new HttpError(400, 'Memory looks like 512M or 3G');
+      if (!/^\d{1,5}[MG]$/.test(v)) throw new HttpError(400, 'Memory looks like 512M or 3G');
       patch[k] = v;
     }
     if (jvmPreset !== undefined) { if (!['aikar', 'default'].includes(jvmPreset)) throw new HttpError(400, 'Unknown JVM preset'); patch.jvmPreset = jvmPreset; }
