@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { Component, createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Archive, Bell, Boxes, CircleUser, FileCode2, Gauge, Globe2, History, KeyRound, LayoutDashboard, LogOut, Menu, Moon, Package, RefreshCw, ScrollText, Search, Settings as Cog, ShieldCheck, Sun, TerminalSquare, Users, UsersRound, AlertTriangle } from 'lucide-react';
 import { api, setUnauthorizedHandler, restartNeededSince, clearRestartNeeded } from './api.js';
@@ -21,6 +21,23 @@ import Permissions from './pages/Permissions.jsx';
 import Access from './pages/Access.jsx';
 import Alerts from './pages/Alerts.jsx';
 import Account from './pages/Account.jsx';
+
+/** A bug in one page must never blank the whole dashboard. */
+class Boundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidUpdate(prev) { if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null }); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="panel"><div className="empty">
+        <AlertTriangle /><b style={{ color: 'var(--text)' }}>This page hit a problem</b>
+        <div>The rest of the dashboard still works. Reload to try again, and tell the admin if it keeps happening.<div className="mono faint" style={{ marginTop: 8 }}>{String(this.state.error.message || this.state.error).slice(0, 160)}</div></div>
+        <button className="btn primary" onClick={() => location.reload()}>Reload</button>
+      </div></div>
+    );
+  }
+}
 
 const ServerCtx = createContext(null);
 export const useServer = () => useContext(ServerCtx);
@@ -133,6 +150,7 @@ function Shell({ me, onLogout }) {
               </div>
             )}
             <main className="page">
+              <Boundary resetKey={loc.pathname}>
               <Routes>
                 <Route path="/" element={can('view') ? <Overview /> : <Navigate to={home} replace />} />
                 <Route path="/console" element={<Console />} />
@@ -152,6 +170,7 @@ function Shell({ me, onLogout }) {
                 <Route path="/account" element={<Account onSignedOut={onLogout} />} />
                 <Route path="*" element={<Navigate to={home} replace />} />
               </Routes>
+              </Boundary>
             </main>
           </div>
         </div>

@@ -115,6 +115,7 @@ export default function Overview() {
 
 function OnlinePlayers() {
   const { data } = useServer();
+  const me = useMe();
   const toast = useToast();
   const names = data?.live.players.names || [];
   const kick = async (name) => { try { await api('/players/kick', { method: 'POST', body: { name } }); toast(`${name} was kicked`); } catch (e) { toast(e.message, 'err'); } };
