@@ -11,6 +11,22 @@ const readConf = (f) => fsp.readFile(path.join(dir(), f), 'utf8').catch(() => ''
 const ACTIONS = { update: 'bluemap update', freeze: 'bluemap freeze', unfreeze: 'bluemap unfreeze', reload: 'bluemap reload' };
 
 export default async function (app) {
+  /** BlueMap reports its render state through the console; turn that text into numbers. */
+  async function renderStatus() {
+    try {
+      const text = await rcon('bluemap');
+      return {
+        text,
+        progress: Number(text.match(/progress:\s*([\d.]+)%/)?.[1] ?? NaN),
+        remaining: text.match(/remaining time:\s*(.+)/)?.[1]?.trim() || null,
+        map: text.match(/map (\S+) is currently being updated/)?.[1] || null,
+        pending: Number(text.match(/(\d+) maps? ha(?:s|ve) pending/)?.[1] ?? 0),
+        paused: /frozen|paused|stopped/i.test(text) && !/is running/i.test(text),
+        working: /currently being updated/.test(text),
+      };
+    } catch { return null; }
+  }
+
   app.get('/api/map', async () => {
     const list = await jars();
     const core = await readConf('core.conf'), web = await readConf('webserver.conf');
@@ -20,6 +36,7 @@ export default async function (app) {
       configured: exists(path.join(dir(), 'core.conf')),
       acceptedDownload: /accept-download:\s*true/.test(core),
       webPort: Number(web.match(/^\s*port:\s*(\d+)/m)?.[1] || 8100),
+      render: list.length ? await renderStatus() : null,
       maps: (await fsp.readdir(path.join(dir(), 'maps')).catch(() => [])).filter((f) => f.endsWith('.conf')).map((f) => f.replace(/\.conf$/, '')),
     };
   });

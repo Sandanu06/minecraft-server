@@ -29,6 +29,15 @@ export default function LiveMap() {
               <div className="muted">Anyone with this link can look at the map, including where players are. {data.maps.length ? `Maps: ${data.maps.join(', ')}.` : 'Maps appear after the first start.'}</div></div>
             <a className="btn primary" href={data.url} target="_blank" rel="noreferrer"><ExternalLink />Open the map</a>
           </section>
+          <section className="panel panel-pad stack-sm">
+            <div className="row spread"><h3>Rendering</h3>
+              <span className={`pill ${data.render?.working ? 'warn' : data.render ? 'ok' : ''}`}>{!data.render ? 'Server offline' : data.render.paused ? 'Paused' : data.render.working ? 'Working' : 'Up to date'}</span></div>
+            {data.render?.working && <>
+              <div className="progress"><i style={{ width: `${Number.isFinite(data.render.progress) ? data.render.progress : 0}%` }} /></div>
+              <div className="muted">{data.render.map ? `Drawing “${data.render.map}”` : 'Drawing'}{Number.isFinite(data.render.progress) ? ` · ${data.render.progress.toFixed(1)}%` : ''}{data.render.remaining ? ` · about ${data.render.remaining} left` : ''}{data.render.pending ? ` · ${data.render.pending} more map${data.render.pending === 1 ? '' : 's'} queued` : ''}</div>
+              <div className="hint">The first drawing of a big world takes a while. The map is usable while it fills in.</div></>}
+            {data.render && !data.render.working && <div className="muted">Everything is drawn and the map follows changes as people build.</div>}
+          </section>
           {manage && (
             <section className="panel panel-pad stack-sm">
               <h3>Keep it fresh</h3>
