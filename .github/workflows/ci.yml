@@ -37,11 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 2 }
+        with: { fetch-depth: 0 }
       - name: Work out what changed
         id: changes
         run: |
-          changed=$(git diff --name-only HEAD~1 HEAD || true)
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then before=$(git rev-parse HEAD~1); fi
+          changed=$(git diff --name-only "$before" "${{ github.sha }}" || true)
+          echo "$changed"
           echo "$changed" | grep -qE '^(Dockerfile|entrypoint\.sh|docker-compose\.yml)$' && echo "minecraft=true" >> "$GITHUB_OUTPUT" || echo "minecraft=false" >> "$GITHUB_OUTPUT"
           echo "$changed" | grep -q '^dashboard/' && echo "dashboard=true" >> "$GITHUB_OUTPUT" || echo "dashboard=false" >> "$GITHUB_OUTPUT"
       # Only changes to the game image restart the game. Dashboard-only pushes leave players connected.
