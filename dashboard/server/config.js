@@ -14,6 +14,7 @@ export const config = {
   mcProject: env.MC_PROJECT || 'fb06ymf6y88v42zcevgm7m9m',
   mcService: env.MC_SERVICE || 'minecraft',
   stopGraceSeconds: Number(env.STOP_GRACE_SECONDS || 60),
+  mapUrl: env.MAP_URL || 'https://map.minecraft.teczos.com',
   adminUser: env.ADMIN_USER || 'admin',
   adminPasswordHash: env.ADMIN_PASSWORD_HASH || '',
   sessionSecret: env.SESSION_SECRET || '',

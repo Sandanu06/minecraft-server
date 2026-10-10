@@ -73,6 +73,8 @@ export const ROUTES = [
   ['POST', /^\/api\/player-control\//, 'players.control'],
   ['GET', /^\/api\/plugins/, 'plugins.view'],
   ['*', /^\/api\/plugins/, 'plugins.manage'],
+  ['GET', /^\/api\/map$/, 'view'],
+  ['*', /^\/api\/map\//, 'worlds.manage'],
   ['GET', /^\/api\/worlds$/, 'worlds.view'],
   ['*', /^\/api\/worlds/, 'worlds.manage'],
   ['GET', /^\/api\/world-control$/, 'worlds.view'],

@@ -49,7 +49,7 @@ app.post('/api/logout', async (req, reply) => { reply.header('Set-Cookie', logou
 
 await app.register(async (api) => {
   api.addHook('onRequest', guard);
-  for (const name of ['users', 'server', 'players', 'plugins', 'backups', 'worlds', 'settings', 'scripts', 'alerts', 'control', 'lp']) {
+  for (const name of ['users', 'server', 'players', 'plugins', 'backups', 'worlds', 'settings', 'scripts', 'alerts', 'control', 'lp', 'map']) {
     await api.register((await import(`./routes/${name}.js`)).default);
   }
 });

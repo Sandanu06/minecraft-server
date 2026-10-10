@@ -87,7 +87,8 @@ export async function ensureNetwork() {
   const info = await inspectMc();
   const nets = Object.keys(info.NetworkSettings?.Networks || {});
   if (!nets.length) return null;
-  const net = nets[0];
+  // Prefer the game's own private network, not the shared proxy network it may also be attached to.
+  const net = nets.includes(config.mcProject) ? config.mcProject : nets[0];
   const self = os.hostname();
   const me = await request('GET', `/containers/${self}/json`);
   if (me.status === 200 && me.data?.NetworkSettings?.Networks?.[net]) return info.NetworkSettings.Networks[net].IPAddress;
@@ -99,8 +100,8 @@ export async function ensureNetwork() {
 export async function mcAddress() {
   const info = await inspectMc();
   if (!info.State?.Running) return null;
-  const nets = Object.values(info.NetworkSettings?.Networks || {});
-  return nets[0]?.IPAddress || null;
+  const all = info.NetworkSettings?.Networks || {};
+  return (all[config.mcProject] || Object.values(all)[0])?.IPAddress || null;
 }
 
 // Docker multiplexes stdout/stderr in 8-byte-framed chunks when there is no TTY.
