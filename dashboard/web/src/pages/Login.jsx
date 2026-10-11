@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Logo, Spinner } from '../ui.jsx';
+import { Wordmark, Spinner } from '../ui.jsx';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -19,7 +19,7 @@ export default function Login({ onLogin }) {
   return (
     <div className="login">
       <section className="login-brand">
-        <Logo className="login-mark" />
+        <Wordmark className="login-mark wm" />
         <div>
           <h1>Run your world from one place.</h1>
           <p>Start and stop the server, manage players and plugins, and keep every world backed up.</p>

@@ -1,10 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { BRAND_YELLOW, MARK_PATH, MARK_VIEWBOX, WORDMARK_VIEWBOX, TEXT_TRANSFORM, TEXT_PATH } from './brand.js';
 
+/** The Teczos mark on its own. */
 export const Logo = ({ className }) => (
-  <svg className={className} viewBox="80 70 340 416" fill="#FDD32F" role="img" aria-label="Teczos">
-    <path d="M85 75H199L293 170L199 265H85L180 170Z" />
-    <path d="M199 265H333L414 346H280V481L199 401Z" />
+  <svg className={className} viewBox={MARK_VIEWBOX} role="img" aria-label="Teczos"><path fill={BRAND_YELLOW} d={MARK_PATH} /></svg>
+);
+/** Mark plus lettering; the lettering follows the text colour, so it works on dark and light themes. */
+export const Wordmark = ({ className }) => (
+  <svg className={className} viewBox={WORDMARK_VIEWBOX} role="img" aria-label="Teczos">
+    <path fill={BRAND_YELLOW} d={MARK_PATH} />
+    <g transform={TEXT_TRANSFORM}><path fill="currentColor" d={TEXT_PATH} /></g>
   </svg>
 );
 
@@ -35,15 +41,19 @@ export function ToastProvider({ children }) {
 /* ---------- modal ---------- */
 export function Modal({ title, children, onClose, wide, actions }) {
   const ref = useRef(null);
+  // Callers pass a fresh onClose on every render. Keep the latest in a ref so the focus effect below runs
+  // once on open; depending on onClose would re-focus the first field after every keystroke.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     const prev = document.activeElement;
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    const onKey = (e) => { if (e.key === 'Escape') closeRef.current?.(); };
     document.addEventListener('keydown', onKey);
     ref.current?.querySelector('input, textarea, select, button.primary, button')?.focus();
     return () => { document.removeEventListener('keydown', onKey); prev?.focus?.(); };
-  }, [onClose]);
+  }, []);
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current?.()}>
       <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <h2>{title}</h2>
         {children}

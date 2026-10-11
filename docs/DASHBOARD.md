@@ -61,10 +61,6 @@ Each script can be limited to certain roles; owners can always run everything. *
 - *Worlds*: switch/create/download worlds; removed worlds go to a hidden `.trash` folder. *Game controls*: time, weather, difficulty, world border, game rules, save now.
 - *Versions*: switch Paper versions (never to a version older than the world) and update to the newest build.
 
-## Live map (BlueMap)
-
-`https://map.minecraft.teczos.com` is a public 3D map of the world, served by the BlueMap plugin inside the game container and routed through Coolify (the domain is set on the game app as `https://map.minecraft.teczos.com:8100`). The *Live map* page shows render progress and has update / pause / resume buttons. The first full render takes about an hour for the current world and uses extra CPU; pause it if the server lags. Anyone with the address can see the map and where players are.
-
 ## Offline mode (TLauncher)
 
 `online-mode=false` stays on so TLauncher players can join. Anyone can then join under any name, so turn the allowlist on and consider the AuthMe plugin.

@@ -1,9 +1,9 @@
 import { Component, createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Archive, Bell, Boxes, Map as MapIcon, CircleUser, FileCode2, Gauge, Globe2, History, KeyRound, LayoutDashboard, LogOut, Menu, Moon, Package, RefreshCw, ScrollText, Search, Settings as Cog, ShieldCheck, Sun, TerminalSquare, Users, UsersRound, AlertTriangle } from 'lucide-react';
+import { Archive, Bell, Boxes, CircleUser, FileCode2, Gauge, Globe2, History, KeyRound, LayoutDashboard, LogOut, Menu, Moon, Package, RefreshCw, ScrollText, Search, Settings as Cog, ShieldCheck, Sun, TerminalSquare, Users, UsersRound, AlertTriangle } from 'lucide-react';
 import { api, setUnauthorizedHandler, restartNeededSince, clearRestartNeeded } from './api.js';
 import { useApi, useTheme } from './hooks.js';
-import { Logo, ToastProvider, useToast, Spinner } from './ui.jsx';
+import { Wordmark, ToastProvider, useToast, Spinner } from './ui.jsx';
 import Login from './pages/Login.jsx';
 import Overview from './pages/Overview.jsx';
 import Console from './pages/Console.jsx';
@@ -21,7 +21,6 @@ import Permissions from './pages/Permissions.jsx';
 import Access from './pages/Access.jsx';
 import Alerts from './pages/Alerts.jsx';
 import Account from './pages/Account.jsx';
-import LiveMap from './pages/LiveMap.jsx';
 
 /** A bug in one page must never blank the whole dashboard. */
 class Boundary extends Component {
@@ -49,7 +48,7 @@ export const useMe = () => useContext(MeCtx);
 const NAV = [
   ['Server', [['/', 'Overview', LayoutDashboard, 'view'], ['/console', 'Console', TerminalSquare, 'console.view'], ['/monitoring', 'Monitoring', Gauge, 'view']]],
   ['People', [['/players', 'Players', Users, 'players.view'], ['/permissions', 'Permissions', ShieldCheck, 'permissions.view']]],
-  ['Content', [['/plugins', 'Plugins', Package, 'plugins.view'], ['/worlds', 'Worlds', Globe2, 'worlds.view'], ['/map', 'Live map', MapIcon, 'view'], ['/versions', 'Versions', Boxes, 'worlds.view']]],
+  ['Content', [['/plugins', 'Plugins', Package, 'plugins.view'], ['/worlds', 'Worlds', Globe2, 'worlds.view'], ['/versions', 'Versions', Boxes, 'worlds.view']]],
   ['Automation', [['/scripts', 'Scripts', ScrollText, 'scripts.view']]],
   ['Safety', [['/backups', 'Backups', Archive, 'backups.view']]],
   ['System', [['/settings', 'Settings', Cog, 'settings.view'], ['/files', 'Config files', FileCode2, 'files.view'], ['/alerts', 'Alerts', Bell, 'alerts.manage'], ['/access', 'Access', UsersRound, 'users.manage'], ['/activity', 'Activity', History, 'audit.view']]],
@@ -117,7 +116,7 @@ function Shell({ me, onLogout }) {
       <ServerCtx.Provider value={{ ...overview, restart }}>
         <div className="shell">
           <aside className="rail" data-open={open}>
-            <div className="brand"><Logo /><div><b>Teczos</b><span>Minecraft control</span></div></div>
+            <div className="brand"><Wordmark /><span>Minecraft control</span></div>
             <nav className="nav" aria-label="Main">
               {nav.map(([group, items]) => (
                 <div key={group}>
@@ -160,7 +159,6 @@ function Shell({ me, onLogout }) {
                 <Route path="/permissions" element={<Permissions />} />
                 <Route path="/plugins" element={<Plugins />} />
                 <Route path="/worlds" element={<Worlds />} />
-                <Route path="/map" element={<LiveMap />} />
                 <Route path="/versions" element={<Versions />} />
                 <Route path="/scripts" element={<Scripts />} />
                 <Route path="/backups" element={<Backups />} />
