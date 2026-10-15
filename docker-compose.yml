@@ -17,6 +17,9 @@ services:
       MAX_MEMORY: ${MAX_MEMORY:-2G}
     volumes:
       - minecraft-data:/data
+    # Hard ceiling so a runaway JVM can't starve the agents stack (Paperclip/Hermes) on the shared VPS.
+    mem_limit: 3g
+    mem_reservation: 1g
     stop_grace_period: 60s
     restart: unless-stopped
 
